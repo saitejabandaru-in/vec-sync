@@ -1,5 +1,5 @@
 {
-  "name": "@saitejabandaru-in/vector-sync",
+  "name": "@saitejabandaru-in/vec-sync",
   "version": "0.1.0",
   "description": "Universal Vector Database Migration & Sync Tool.",
   "main": "./dist/server.js",
