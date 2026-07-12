@@ -66,7 +66,10 @@ app.post("/api/migrate/start", async (req: Request, res: Response) => {
         targetDb,
         collectionName,
         targetCollectionName,
-        batchSize
+        batchSize,
+        concurrency,
+        transformScript,
+        reEmbedConfig
     } = req.body;
 
     if (!sourceDb || !targetDb || !collectionName) {
@@ -98,6 +101,9 @@ app.post("/api/migrate/start", async (req: Request, res: Response) => {
                 collectionName,
                 targetCollectionName: targetCollectionName || collectionName,
                 batchSize: batchSize ? parseInt(batchSize, 10) : 25,
+                concurrency: concurrency ? parseInt(concurrency, 10) : 4,
+                transformScript,
+                reEmbedConfig,
                 onProgress: (p) => {
                     currentProgress = p;
                 }

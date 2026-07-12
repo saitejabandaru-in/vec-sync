@@ -18,13 +18,19 @@ test("MigrationOrchestrator - stream memory-to-memory vectors", async () => {
     assert.deepStrictEqual(await source.getCollections(), ["default-collection"]);
     assert.deepStrictEqual(await target.getCollections(), []);
 
-    // 3. Execute migration
+    // 3. Execute migration with concurrency = 4 and custom JS transformer script
     const result = await orchestrator.migrate({
         sourceConnector: source,
         targetConnector: target,
         collectionName: "default-collection",
         targetCollectionName: "migrated-collection",
-        batchSize: 10
+        batchSize: 10,
+        concurrency: 4,
+        transformScript: `
+            payload.migrated_at = 123456789;
+            payload.upper_case_text = payload.text.toUpperCase();
+            delete payload.category;
+        `
     });
 
     // 4. Assertions
@@ -37,9 +43,15 @@ test("MigrationOrchestrator - stream memory-to-memory vectors", async () => {
     assert.deepStrictEqual(await target.getCollections(), ["migrated-collection"]);
     assert.strictEqual(target.getCollectionCount("migrated-collection"), 50);
 
-    // Verify metadata payload and dimensions
+    // Verify metadata payload and transformations
     const migratedBatch = await target.readVectors("migrated-collection", 5, 0);
     assert.strictEqual(migratedBatch.length, 5);
+    
+    // Check that JS mappings ran correctly
+    assert.strictEqual(migratedBatch[0].payload.migrated_at, 123456789);
+    assert.strictEqual(migratedBatch[0].payload.category, undefined); // deleted
+    assert.ok(migratedBatch[0].payload.upper_case_text.startsWith("THIS IS TEXT DOCUMENT"));
+    
+    // Check vector length
     assert.strictEqual(migratedBatch[0].vector.length, 128); // 128 dimensions
-    assert.ok(migratedBatch[0].payload.text.includes("This is text document"));
 });

@@ -51,7 +51,7 @@
             </div>
             <div class="mt-4 md:mt-0 flex items-center space-x-3 text-xs font-semibold">
                 <span class="px-3 py-1 rounded-full bg-blue-900/50 text-blue-300 border border-blue-800">
-                    Production Gateway v0.1.0
+                    Enterprise Gateway v0.2.0
                 </span>
             </div>
         </div>
@@ -129,9 +129,53 @@
                             <label class="text-xs text-gray-400 font-medium">Target Collection (Dest)</label>
                             <input type="text" id="tarCollection" value="migrated-collection" class="w-full bg-gray-900 border border-gray-700 text-white rounded p-2 text-sm focus:outline-none focus:border-blue-500">
                         </div>
+
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-xs text-gray-400 font-medium">Concurrency (Parallel Batch Workers)</label>
+                            <div class="flex items-center space-x-4 bg-gray-900 border border-gray-700 rounded p-2">
+                                <input type="range" id="concurrency" min="1" max="8" value="4" class="flex-1 accent-blue-500 bg-transparent">
+                                <span id="concurrencyVal" class="text-sm font-bold text-blue-400 w-6 text-center">4</span>
+                            </div>
+                        </div>
+
+                        <!-- JS Transformer Editor -->
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-xs text-gray-400 font-medium">Metadata JavaScript Transformer Script</label>
+                            <textarea id="transformScript" rows="3" class="w-full bg-gray-900 border border-gray-700 text-green-400 font-mono p-3 text-xs rounded focus:outline-none focus:border-blue-500 scrollbar" placeholder="// Modify metadata payload fields dynamically&#10;payload.migrated_at = Date.now();&#10;delete payload.temporary_field;"></textarea>
+                        </div>
+
+                        <!-- Embedding Upgrades -->
+                        <div class="md:col-span-2 border-t border-gray-800 pt-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-medium text-white">Enable Embedding Upgrades (On-the-fly Re-embedding)</span>
+                                    <p class="text-xs text-gray-500 mt-0.5">Calls OpenAI embeddings API during migration to upgrade vector dimensions</p>
+                                </div>
+                                <input type="checkbox" id="enableReembed" class="w-4 h-4 text-blue-600 bg-gray-900 border-gray-700 rounded focus:ring-blue-500">
+                            </div>
+                            
+                            <div id="reembedPanel" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-900/40 p-4 border border-gray-800 rounded-lg">
+                                <div class="space-y-1.5">
+                                    <label class="text-xs text-gray-400">OpenAI API Key</label>
+                                    <input type="password" id="openaiKey" placeholder="sk-..." class="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs focus:outline-none focus:border-blue-500">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs text-gray-400">Target Model</label>
+                                    <select id="openaiModel" class="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs focus:outline-none focus:border-blue-500">
+                                        <option value="text-embedding-3-small">text-embedding-3-small (1536 dims)</option>
+                                        <option value="text-embedding-3-large">text-embedding-3-large (3072 dims)</option>
+                                        <option value="text-embedding-ada-002">text-embedding-ada-002 (1536 dims)</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-xs text-gray-400">Payload text key</label>
+                                    <input type="text" id="textField" value="text" class="w-full bg-gray-900 border border-gray-700 text-white rounded p-1.5 text-xs focus:outline-none focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-4 border-t border-gray-800 pt-4">
                         <button id="startBtn" class="flex-1 py-2.5 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg shadow-md transition duration-200">
                             Start Migration
                         </button>
@@ -144,7 +188,10 @@
                     <div id="progressContainer" class="hidden space-y-2">
                         <div class="flex items-center justify-between text-sm">
                             <span id="progressStatus" class="font-medium text-blue-400">Migrating...</span>
-                            <span id="progressPercentage" class="font-bold text-white">0 Vectors Completed</span>
+                            <div class="flex space-x-4 text-xs font-mono">
+                                <span id="elapsedTimer" class="text-gray-400">Elapsed: 0s</span>
+                                <span id="progressPercentage" class="font-bold text-white">0 Vectors Completed</span>
+                            </div>
                         </div>
                         <div class="w-full bg-gray-800 rounded-full h-3.5 overflow-hidden">
                             <div id="progressBar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
@@ -178,6 +225,23 @@
         let speedChart = null;
         const chartDataPoints = [];
         const chartLabels = [];
+
+        // Concurrency Slider Handler
+        const slider = document.getElementById('concurrency');
+        const valSpan = document.getElementById('concurrencyVal');
+        slider.addEventListener('input', (e) => {
+            valSpan.innerText = e.target.value;
+        });
+
+        // Re-embedding checkbox toggle panel
+        document.getElementById('enableReembed').addEventListener('change', (e) => {
+            const panel = document.getElementById('reembedPanel');
+            if (e.target.checked) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        });
 
         // Initialize Speed Chart
         const ctx = document.getElementById('speedChart').getContext('2d');
@@ -258,6 +322,8 @@
 
         // Start migration handler
         document.getElementById('startBtn').addEventListener('click', async () => {
+            const reembedEnabled = document.getElementById('enableReembed').checked;
+            
             const payload = {
                 sourceDb: {
                     type: document.getElementById('srcType').value,
@@ -271,7 +337,14 @@
                 },
                 collectionName: document.getElementById('srcCollection').value,
                 targetCollectionName: document.getElementById('tarCollection').value,
-                batchSize: 25
+                batchSize: 25,
+                concurrency: document.getElementById('concurrency').value,
+                transformScript: document.getElementById('transformScript').value,
+                reEmbedConfig: reembedEnabled ? {
+                    apiKey: document.getElementById('openaiKey').value,
+                    model: document.getElementById('openaiModel').value,
+                    textField: document.getElementById('textField').value
+                } : undefined
             };
 
             if (!payload.collectionName) {
@@ -279,7 +352,12 @@
                 return;
             }
 
-            log(`Starting migration of collection "${payload.collectionName}"...`);
+            if (reembedEnabled && !payload.reEmbedConfig.apiKey) {
+                alert("Please enter your OpenAI API key for re-embedding.");
+                return;
+            }
+
+            log(`Starting migration of "${payload.collectionName}" (Concurrency: ${payload.concurrency})...`);
             
             try {
                 const res = await fetch('/api/migrate/start', {
@@ -327,6 +405,7 @@
                 // Update visual metrics
                 document.getElementById('progressPercentage').innerText = `${data.completed} Vectors Completed`;
                 document.getElementById('progressStatus').innerText = `Status: ${data.status}`;
+                document.getElementById('elapsedTimer').innerText = `Elapsed: ${data.elapsedSeconds.toFixed(0)}s`;
 
                 const bar = document.getElementById('progressBar');
                 if (data.status === 'COMPLETED') {
