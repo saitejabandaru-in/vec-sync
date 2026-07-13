@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: saitejabandaru-in/vec-sync
+  IMAGE_NAME: saitejabandaru-in/vector-sync-engine
 
 jobs:
   build-and-push:

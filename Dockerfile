@@ -13,7 +13,7 @@ COPY package*.json ./
 RUN npm install --production
 COPY --from=builder /app/dist ./dist
 COPY public ./public
-LABEL org.opencontainers.image.source=https://github.com/saitejabandaru-in/vec-sync
+LABEL org.opencontainers.image.source=https://github.com/saitejabandaru-in/vector-sync-engine
 EXPOSE 3000
 ENV PORT=3000
 CMD ["npm", "start"]
