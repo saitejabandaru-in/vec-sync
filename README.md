@@ -5,6 +5,8 @@
   <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg?style=flat-square&logo=node.js" alt="Node Version" />
   <img src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License" />
+
+  <img src="https://img.shields.io/github/actions/workflow/status/saitejabandaru-in/vector-sync-engine/node.js.yml?branch=main&label=Build&style=flat-square"/>
 </p>
 
 `vector-sync` is a production-grade, containerized **Vector Database Migration & Synchronization Gateway** built for AI agencies and enterprise engineering teams. It provides a clean, self-hostable control panel to stream, concurrent-migrate, payload-transform, and re-embed vectors between different Vector Search engines (such as Qdrant and ChromaDB) without writing custom scripts.
@@ -110,3 +112,13 @@ Query the status endpoint `GET /api/migrate/status` to get real-time metrics for
 
 ## 📄 License
 MIT License.
+
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Run tests before committing.
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
